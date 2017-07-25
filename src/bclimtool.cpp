@@ -371,7 +371,7 @@ bool CBclimTool::createFile()
 
 int main(int argc, char* argv[])
 {
-	FSetLocale();
+	SetLocale();
 	CBclimTool tool;
 	if (tool.ParseOptions(argc, argv) != 0)
 	{

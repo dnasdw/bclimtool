@@ -1,14 +1,14 @@
 #ifndef BCLIM_H_
 #define BCLIM_H_
 
-#include "utility.h"
+#include <sdw.h>
 
 namespace pvrtexture
 {
 	class CPVRTexture;
 }
 
-#include MSC_PUSH_PACKED
+#include SDW_MSC_PUSH_PACKED
 struct SBclimHeader
 {
 	u32 Signature;
@@ -18,7 +18,7 @@ struct SBclimHeader
 	u32 FileSize;
 	u16 DataBlocks;
 	u16 Reserved;
-} GNUC_PACKED;
+} SDW_GNUC_PACKED;
 
 struct SImageBlock
 {
@@ -28,8 +28,8 @@ struct SImageBlock
 	u16 Height;
 	u32 Format;
 	u32 ImageSize;
-} GNUC_PACKED;
-#include MSC_POP_PACKED
+} SDW_GNUC_PACKED;
+#include SDW_MSC_POP_PACKED
 
 class CBclim
 {

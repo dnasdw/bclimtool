@@ -2,8 +2,8 @@
 #include <png.h>
 #include <PVRTextureUtilities.h>
 
-const u32 CBclim::s_uSignatureBclim = CONVERT_ENDIAN('CLIM');
-const u32 CBclim::s_uSignatureImage = CONVERT_ENDIAN('imag');
+const u32 CBclim::s_uSignatureBclim = SDW_CONVERT_ENDIAN32('CLIM');
+const u32 CBclim::s_uSignatureImage = SDW_CONVERT_ENDIAN32('imag');
 const int CBclim::s_nBPP[] = { 8, 8, 8, 16, 16, 16, 24, 16, 16, 32, 4, 8, 4, 4 };
 const int CBclim::s_nDecodeTransByte[64] =
 {
@@ -53,14 +53,14 @@ void CBclim::SetVerbose(bool a_bVerbose)
 bool CBclim::DecodeFile()
 {
 	bool bResult = true;
-	m_fpBclim = FFopen(m_pFileName, "rb");
+	m_fpBclim = Fopen(m_pFileName, "rb");
 	if (m_fpBclim == nullptr)
 	{
 		return false;
 	}
-	FFseek(m_fpBclim, 0, SEEK_END);
-	n64 nFileSize = FFtell(m_fpBclim);
-	FFseek(m_fpBclim, 0, SEEK_SET);
+	Fseek(m_fpBclim, 0, SEEK_END);
+	n64 nFileSize = Ftell(m_fpBclim);
+	Fseek(m_fpBclim, 0, SEEK_SET);
 	u8* pBin = new u8[static_cast<size_t>(nFileSize)];
 	fread(pBin, 1, static_cast<size_t>(nFileSize), m_fpBclim);
 	fclose(m_fpBclim);
@@ -84,7 +84,7 @@ bool CBclim::DecodeFile()
 		pvrtexture::CPVRTexture* pPVRTexture = nullptr;
 		if (decode(pBin, nWidth, nHeight, pImageBlock->Format, &pPVRTexture) == 0)
 		{
-			FILE* fp = FFopen(m_pPngName, "wb");
+			FILE* fp = Fopen(m_pPngName, "wb");
 			if (fp == nullptr)
 			{
 				delete pPVRTexture;
@@ -148,14 +148,14 @@ bool CBclim::DecodeFile()
 bool CBclim::EncodeFile()
 {
 	bool bResult = true;
-	m_fpBclim = FFopen(m_pFileName, "rb");
+	m_fpBclim = Fopen(m_pFileName, "rb");
 	if (m_fpBclim == nullptr)
 	{
 		return false;
 	}
-	FFseek(m_fpBclim, 0, SEEK_END);
-	n64 nFileSize = FFtell(m_fpBclim);
-	FFseek(m_fpBclim, 0, SEEK_SET);
+	Fseek(m_fpBclim, 0, SEEK_END);
+	n64 nFileSize = Ftell(m_fpBclim);
+	Fseek(m_fpBclim, 0, SEEK_SET);
 	u8* pBin = new u8[static_cast<size_t>(nFileSize)];
 	fread(pBin, 1, static_cast<size_t>(nFileSize), m_fpBclim);
 	fclose(m_fpBclim);
@@ -176,7 +176,7 @@ bool CBclim::EncodeFile()
 		{
 			printf("INFO: width: %X(%X), height: %X(%X), checksize: %X, size: %X, bpp: %d, format: %0X\n", nWidth, pImageBlock->Width, nHeight, pImageBlock->Height, nCheckSize, pImageBlock->ImageSize, pImageBlock->ImageSize * 8 / nWidth / nHeight, pImageBlock->Format);
 		}
-		FILE* fp = FFopen(m_pPngName, "rb");
+		FILE* fp = Fopen(m_pPngName, "rb");
 		if (fp == nullptr)
 		{
 			bResult = false;
@@ -279,7 +279,7 @@ bool CBclim::EncodeFile()
 		delete pPVRTexture;
 		if (!bSame)
 		{
-			m_fpBclim = FFopen(m_pFileName, "wb");
+			m_fpBclim = Fopen(m_pFileName, "wb");
 			if (m_fpBclim != nullptr)
 			{
 				u8* pBuffer = nullptr;
@@ -310,7 +310,7 @@ bool CBclim::CreateFile()
 	bool bResult = true;
 	do
 	{
-		FILE* fp = FFopen(m_pPngName, "rb");
+		FILE* fp = Fopen(m_pPngName, "rb");
 		if (fp == nullptr)
 		{
 			bResult = false;
@@ -395,7 +395,7 @@ bool CBclim::CreateFile()
 		}
 		delete[] pRowPointers;
 		fclose(fp);
-		m_fpBclim = FFopen(m_pFileName, "wb");
+		m_fpBclim = Fopen(m_pFileName, "wb");
 		if (m_fpBclim != nullptr)
 		{
 			SImageBlock imageBlock;
@@ -432,18 +432,18 @@ bool CBclim::CreateFile()
 
 bool CBclim::IsBclimFile(const char* a_pFileName)
 {
-	FILE* fp = FFopen(a_pFileName, "rb");
+	FILE* fp = Fopen(a_pFileName, "rb");
 	if (fp == nullptr)
 	{
 		return false;
 	}
-	FFseek(fp, 0, SEEK_END);
-	n64 nFileSize = FFtell(fp);
+	Fseek(fp, 0, SEEK_END);
+	n64 nFileSize = Ftell(fp);
 	if (nFileSize < sizeof(SBclimHeader) + sizeof(SImageBlock))
 	{
 		return false;
 	}
-	FFseek(fp, nFileSize - (sizeof(SBclimHeader) + sizeof(SImageBlock)), SEEK_SET);
+	Fseek(fp, nFileSize - (sizeof(SBclimHeader) + sizeof(SImageBlock)), SEEK_SET);
 	SBclimHeader bclimHeader;
 	fread(&bclimHeader, sizeof(bclimHeader), 1, fp);
 	fclose(fp);

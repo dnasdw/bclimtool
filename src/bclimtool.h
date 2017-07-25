@@ -1,7 +1,7 @@
 #ifndef BCLIMTOOL_H_
 #define BCLIMTOOL_H_
 
-#include "utility.h"
+#include <sdw.h>
 #include "bclim.h"
 
 class CBclimTool
