@@ -18,11 +18,8 @@ const int CBclim::s_nDecodeTransByte[64] =
 };
 
 CBclim::CBclim()
-	: m_pFileName(nullptr)
-	, m_pPngName(nullptr)
-	, m_eTextureFormat(kTextureFormatRGBA8888)
+	: m_eTextureFormat(kTextureFormatRGBA8888)
 	, m_bVerbose(false)
-	, m_fpBclim(nullptr)
 {
 }
 
@@ -30,14 +27,14 @@ CBclim::~CBclim()
 {
 }
 
-void CBclim::SetFileName(const char* a_pFileName)
+void CBclim::SetFileName(const UString& a_sFileName)
 {
-	m_pFileName = a_pFileName;
+	m_sFileName = a_sFileName;
 }
 
-void CBclim::SetPngName(const char* a_pPngName)
+void CBclim::SetPngName(const UString& a_sPngName)
 {
-	m_pPngName = a_pPngName;
+	m_sPngName = a_sPngName;
 }
 
 void CBclim::SetTextureFormat(ETextureFormat a_eTextureFormat)
@@ -53,25 +50,25 @@ void CBclim::SetVerbose(bool a_bVerbose)
 bool CBclim::DecodeFile()
 {
 	bool bResult = true;
-	m_fpBclim = Fopen(m_pFileName, "rb");
-	if (m_fpBclim == nullptr)
+	FILE* fp = UFopen(m_sFileName.c_str(), USTR("rb"));
+	if (fp == nullptr)
 	{
 		return false;
 	}
-	Fseek(m_fpBclim, 0, SEEK_END);
-	n64 nFileSize = Ftell(m_fpBclim);
-	Fseek(m_fpBclim, 0, SEEK_SET);
-	u8* pBin = new u8[static_cast<size_t>(nFileSize)];
-	fread(pBin, 1, static_cast<size_t>(nFileSize), m_fpBclim);
-	fclose(m_fpBclim);
-	SBclimHeader* pBclimHeader = reinterpret_cast<SBclimHeader*>(pBin + nFileSize - (sizeof(SBclimHeader) + sizeof(SImageBlock)));
-	SImageBlock* pImageBlock = reinterpret_cast<SImageBlock*>(pBin + nFileSize - sizeof(SImageBlock));
+	fseek(fp, 0, SEEK_END);
+	u32 uBclimSize = ftell(fp);
+	fseek(fp, 0, SEEK_SET);
+	u8* pBclim = new u8[uBclimSize];
+	fread(pBclim, 1, uBclimSize, fp);
+	fclose(fp);
+	SBclimHeader* pBclimHeader = reinterpret_cast<SBclimHeader*>(pBclim + uBclimSize - (sizeof(SBclimHeader) + sizeof(SImageBlock)));
+	SImageBlock* pImageBlock = reinterpret_cast<SImageBlock*>(pBclim + uBclimSize - sizeof(SImageBlock));
 	do
 	{
 		if (pImageBlock->Format < kTextureFormatL8 || pImageBlock->Format > kTextureFormatA4)
 		{
-			printf("ERROR: unknown format %d\n\n", pImageBlock->Format);
 			bResult = false;
+			UPrintf(USTR("ERROR: unknown format %d\n\n"), pImageBlock->Format);
 			break;
 		}
 		n32 nWidth = getBoundSize(pImageBlock->Width);
@@ -79,94 +76,94 @@ bool CBclim::DecodeFile()
 		n32 nCheckSize = nWidth * nHeight * s_nBPP[pImageBlock->Format] / 8;
 		if (pImageBlock->ImageSize != nCheckSize && m_bVerbose)
 		{
-			printf("INFO: width: %X(%X), height: %X(%X), checksize: %X, size: %X, bpp: %d, format: %0X\n", nWidth, pImageBlock->Width, nHeight, pImageBlock->Height, nCheckSize, pImageBlock->ImageSize, pImageBlock->ImageSize * 8 / nWidth / nHeight, pImageBlock->Format);
+			UPrintf(USTR("INFO: width: %X(%X), height: %X(%X), checksize: %X, size: %X, bpp: %d, format: %0X\n"), nWidth, pImageBlock->Width, nHeight, pImageBlock->Height, nCheckSize, pImageBlock->ImageSize, pImageBlock->ImageSize * 8 / nWidth / nHeight, pImageBlock->Format);
 		}
 		pvrtexture::CPVRTexture* pPVRTexture = nullptr;
-		if (decode(pBin, nWidth, nHeight, pImageBlock->Format, &pPVRTexture) == 0)
+		if (decode(pBclim, nWidth, nHeight, pImageBlock->Format, &pPVRTexture) == 0)
 		{
-			FILE* fp = Fopen(m_pPngName, "wb");
+			fp = UFopen(m_sPngName.c_str(), USTR("wb"));
 			if (fp == nullptr)
 			{
 				delete pPVRTexture;
 				bResult = false;
 				break;
 			}
-			png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, (png_voidp)nullptr, nullptr, nullptr);
-			if (png_ptr == nullptr)
+			png_structp pPng = png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
+			if (pPng == nullptr)
 			{
 				fclose(fp);
 				delete pPVRTexture;
-				printf("ERROR: png_create_write_struct error\n\n");
 				bResult = false;
+				UPrintf(USTR("ERROR: png_create_write_struct error\n\n"));
 				break;
 			}
-			png_infop info_ptr = png_create_info_struct(png_ptr);
-			if (info_ptr == nullptr)
+			png_infop pInfo = png_create_info_struct(pPng);
+			if (pInfo == nullptr)
 			{
-				png_destroy_write_struct(&png_ptr, (png_infopp)nullptr);
+				png_destroy_write_struct(&pPng, nullptr);
 				fclose(fp);
 				delete pPVRTexture;
-				printf("ERROR: png_create_info_struct error\n\n");
 				bResult = false;
+				UPrintf(USTR("ERROR: png_create_info_struct error\n\n"));
 				break;
 			}
-			if (setjmp(png_jmpbuf(png_ptr)) != 0)
+			if (setjmp(png_jmpbuf(pPng)) != 0)
 			{
-				png_destroy_write_struct(&png_ptr, &info_ptr);
+				png_destroy_write_struct(&pPng, &pInfo);
 				fclose(fp);
 				delete pPVRTexture;
-				printf("ERROR: setjmp error\n\n");
 				bResult = false;
+				UPrintf(USTR("ERROR: setjmp error\n\n"));
 				break;
 			}
-			png_init_io(png_ptr, fp);
-			png_set_IHDR(png_ptr, info_ptr, pImageBlock->Width, pImageBlock->Height, 8, PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+			png_init_io(pPng, fp);
+			png_set_IHDR(pPng, pInfo, pImageBlock->Width, pImageBlock->Height, 8, PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
 			u8* pData = static_cast<u8*>(pPVRTexture->getDataPtr());
 			png_bytepp pRowPointers = new png_bytep[pImageBlock->Height];
 			for (n32 i = 0; i < pImageBlock->Height; i++)
 			{
 				pRowPointers[i] = pData + i * nWidth * 4;
 			}
-			png_set_rows(png_ptr, info_ptr, pRowPointers);
-			png_write_png(png_ptr, info_ptr, PNG_TRANSFORM_IDENTITY, nullptr);
-			png_destroy_write_struct(&png_ptr, &info_ptr);
+			png_set_rows(pPng, pInfo, pRowPointers);
+			png_write_png(pPng, pInfo, PNG_TRANSFORM_IDENTITY, nullptr);
+			png_destroy_write_struct(&pPng, &pInfo);
 			delete[] pRowPointers;
 			fclose(fp);
 			delete pPVRTexture;
 		}
 		else
 		{
-			printf("ERROR: decode error\n\n");
 			bResult = false;
+			UPrintf(USTR("ERROR: decode error\n\n"));
 			break;
 		}
 	} while (false);
-	delete[] pBin;
+	delete[] pBclim;
 	return bResult;
 }
 
 bool CBclim::EncodeFile()
 {
 	bool bResult = true;
-	m_fpBclim = Fopen(m_pFileName, "rb");
-	if (m_fpBclim == nullptr)
+	FILE* fp = UFopen(m_sFileName.c_str(), USTR("rb"));
+	if (fp == nullptr)
 	{
 		return false;
 	}
-	Fseek(m_fpBclim, 0, SEEK_END);
-	n64 nFileSize = Ftell(m_fpBclim);
-	Fseek(m_fpBclim, 0, SEEK_SET);
-	u8* pBin = new u8[static_cast<size_t>(nFileSize)];
-	fread(pBin, 1, static_cast<size_t>(nFileSize), m_fpBclim);
-	fclose(m_fpBclim);
-	SBclimHeader* pBclimHeader = reinterpret_cast<SBclimHeader*>(pBin + nFileSize - (sizeof(SBclimHeader) + sizeof(SImageBlock)));
-	SImageBlock* pImageBlock = reinterpret_cast<SImageBlock*>(pBin + nFileSize - sizeof(SImageBlock));
+	fseek(fp, 0, SEEK_END);
+	u32 uBclimSize = ftell(fp);
+	fseek(fp, 0, SEEK_SET);
+	u8* pBclim = new u8[uBclimSize];
+	fread(pBclim, 1, uBclimSize, fp);
+	fclose(fp);
+	SBclimHeader* pBclimHeader = reinterpret_cast<SBclimHeader*>(pBclim + uBclimSize - (sizeof(SBclimHeader) + sizeof(SImageBlock)));
+	SImageBlock* pImageBlock = reinterpret_cast<SImageBlock*>(pBclim + uBclimSize - sizeof(SImageBlock));
 	do
 	{
 		if (pImageBlock->Format < kTextureFormatL8 || pImageBlock->Format > kTextureFormatA4)
 		{
-			printf("ERROR: unknown format %d\n\n", pImageBlock->Format);
 			bResult = false;
+			UPrintf(USTR("ERROR: unknown format %d\n\n"), pImageBlock->Format);
 			break;
 		}
 		n32 nWidth = getBoundSize(pImageBlock->Width);
@@ -174,68 +171,68 @@ bool CBclim::EncodeFile()
 		n32 nCheckSize = nWidth * nHeight * s_nBPP[pImageBlock->Format] / 8;
 		if (pImageBlock->ImageSize != nCheckSize && m_bVerbose)
 		{
-			printf("INFO: width: %X(%X), height: %X(%X), checksize: %X, size: %X, bpp: %d, format: %0X\n", nWidth, pImageBlock->Width, nHeight, pImageBlock->Height, nCheckSize, pImageBlock->ImageSize, pImageBlock->ImageSize * 8 / nWidth / nHeight, pImageBlock->Format);
+			UPrintf(USTR("INFO: width: %X(%X), height: %X(%X), checksize: %X, size: %X, bpp: %d, format: %0X\n"), nWidth, pImageBlock->Width, nHeight, pImageBlock->Height, nCheckSize, pImageBlock->ImageSize, pImageBlock->ImageSize * 8 / nWidth / nHeight, pImageBlock->Format);
 		}
-		FILE* fp = Fopen(m_pPngName, "rb");
+		fp = UFopen(m_sPngName.c_str(), USTR("rb"));
 		if (fp == nullptr)
 		{
 			bResult = false;
 			break;
 		}
-		png_structp png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, (png_voidp)nullptr, nullptr, nullptr);
-		if (png_ptr == nullptr)
+		png_structp pPng = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
+		if (pPng == nullptr)
 		{
 			fclose(fp);
-			printf("ERROR: png_create_read_struct error\n\n");
 			bResult = false;
+			UPrintf(USTR("ERROR: png_create_read_struct error\n\n"));
 			break;
 		}
-		png_infop info_ptr = png_create_info_struct(png_ptr);
-		if (info_ptr == nullptr)
+		png_infop pInfo = png_create_info_struct(pPng);
+		if (pInfo == nullptr)
 		{
-			png_destroy_read_struct(&png_ptr, (png_infopp)nullptr, (png_infopp)nullptr);
+			png_destroy_read_struct(&pPng, nullptr, nullptr);
 			fclose(fp);
-			printf("ERROR: png_create_info_struct error\n\n");
 			bResult = false;
+			UPrintf(USTR("ERROR: png_create_info_struct error\n\n"));
 			break;
 		}
-		png_infop end_info = png_create_info_struct(png_ptr);
-		if (end_info == nullptr)
+		png_infop pEndInfo = png_create_info_struct(pPng);
+		if (pEndInfo == nullptr)
 		{
-			png_destroy_read_struct(&png_ptr, &info_ptr, (png_infopp)nullptr);
+			png_destroy_read_struct(&pPng, &pInfo, nullptr);
 			fclose(fp);
-			printf("ERROR: png_create_info_struct error\n\n");
 			bResult = false;
+			UPrintf(USTR("ERROR: png_create_info_struct error\n\n"));
 			break;
 		}
-		if (setjmp(png_jmpbuf(png_ptr)) != 0)
+		if (setjmp(png_jmpbuf(pPng)) != 0)
 		{
-			png_destroy_read_struct(&png_ptr, &info_ptr, &end_info);
+			png_destroy_read_struct(&pPng, &pInfo, &pEndInfo);
 			fclose(fp);
-			printf("ERROR: setjmp error\n\n");
 			bResult = false;
+			UPrintf(USTR("ERROR: setjmp error\n\n"));
 			break;
 		}
-		png_init_io(png_ptr, fp);
-		png_read_info(png_ptr, info_ptr);
-		n32 nPngWidth = png_get_image_width(png_ptr, info_ptr);
-		n32 nPngHeight = png_get_image_height(png_ptr, info_ptr);
-		n32 nBitDepth = png_get_bit_depth(png_ptr, info_ptr);
+		png_init_io(pPng, fp);
+		png_read_info(pPng, pInfo);
+		n32 nPngWidth = png_get_image_width(pPng, pInfo);
+		n32 nPngHeight = png_get_image_height(pPng, pInfo);
+		n32 nBitDepth = png_get_bit_depth(pPng, pInfo);
 		if (nBitDepth != 8)
 		{
-			png_destroy_read_struct(&png_ptr, &info_ptr, (png_infopp)nullptr);
+			png_destroy_read_struct(&pPng, &pInfo, &pEndInfo);
 			fclose(fp);
-			printf("ERROR: nBitDepth != 8\n\n");
 			bResult = false;
+			UPrintf(USTR("ERROR: nBitDepth != 8\n\n"));
 			break;
 		}
-		n32 nColorType = png_get_color_type(png_ptr, info_ptr);
+		n32 nColorType = png_get_color_type(pPng, pInfo);
 		if (nColorType != PNG_COLOR_TYPE_RGB_ALPHA)
 		{
-			png_destroy_read_struct(&png_ptr, &info_ptr, (png_infopp)nullptr);
+			png_destroy_read_struct(&pPng, &pInfo, &pEndInfo);
 			fclose(fp);
-			printf("ERROR: nColorType != PNG_COLOR_TYPE_RGB_ALPHA\n\n");
 			bResult = false;
+			UPrintf(USTR("ERROR: nColorType != PNG_COLOR_TYPE_RGB_ALPHA\n\n"));
 			break;
 		}
 		nWidth = getBoundSize(nPngWidth);
@@ -246,8 +243,8 @@ bool CBclim::EncodeFile()
 		{
 			pRowPointers[i] = pData + i * nWidth * 4;
 		}
-		png_read_image(png_ptr, pRowPointers);
-		png_destroy_read_struct(&png_ptr, &info_ptr, &end_info);
+		png_read_image(pPng, pRowPointers);
+		png_destroy_read_struct(&pPng, &pInfo, &pEndInfo);
 		for (n32 i = 0; i < nPngHeight; i++)
 		{
 			for (n32 j = nPngWidth; j < nWidth; j++)
@@ -263,7 +260,7 @@ bool CBclim::EncodeFile()
 		fclose(fp);
 		pvrtexture::CPVRTexture* pPVRTexture = nullptr;
 		bool bSame = false;
-		if (pImageBlock->Width == nPngWidth && pImageBlock->Height == nPngHeight && decode(pBin, nWidth, nHeight, pImageBlock->Format, &pPVRTexture) == 0)
+		if (pImageBlock->Width == nPngWidth && pImageBlock->Height == nPngHeight && decode(pBclim, nWidth, nHeight, pImageBlock->Format, &pPVRTexture) == 0)
 		{
 			u8* pTextureData = static_cast<u8*>(pPVRTexture->getDataPtr());
 			bSame = true;
@@ -279,8 +276,8 @@ bool CBclim::EncodeFile()
 		delete pPVRTexture;
 		if (!bSame)
 		{
-			m_fpBclim = Fopen(m_pFileName, "wb");
-			if (m_fpBclim != nullptr)
+			fp = UFopen(m_sFileName.c_str(), USTR("wb"));
+			if (fp != nullptr)
 			{
 				u8* pBuffer = nullptr;
 				encode(pData, nWidth, nHeight, pImageBlock->Format, 1, s_nBPP[pImageBlock->Format], &pBuffer);
@@ -288,11 +285,11 @@ bool CBclim::EncodeFile()
 				pImageBlock->Height = nPngHeight;
 				pImageBlock->ImageSize = nWidth * nHeight * s_nBPP[pImageBlock->Format] / 8;
 				pBclimHeader->FileSize = pImageBlock->ImageSize + sizeof(*pBclimHeader) + sizeof(*pImageBlock);
-				fwrite(pBuffer, 1, pImageBlock->ImageSize, m_fpBclim);
+				fwrite(pBuffer, 1, pImageBlock->ImageSize, fp);
+				delete[] pBuffer;
 				fwrite(pBclimHeader, sizeof(*pBclimHeader), 1, fp);
 				fwrite(pImageBlock, sizeof(*pImageBlock), 1, fp);
-				delete[] pBuffer;
-				fclose(m_fpBclim);
+				fclose(fp);
 			}
 			else
 			{
@@ -301,7 +298,7 @@ bool CBclim::EncodeFile()
 		}
 		delete[] pData;
 	} while (false);
-	delete[] pBin;
+	delete[] pBclim;
 	return bResult;
 }
 
@@ -310,66 +307,66 @@ bool CBclim::CreateFile()
 	bool bResult = true;
 	do
 	{
-		FILE* fp = Fopen(m_pPngName, "rb");
+		FILE* fp = UFopen(m_sPngName.c_str(), USTR("rb"));
 		if (fp == nullptr)
 		{
 			bResult = false;
 			break;
 		}
-		png_structp png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, (png_voidp)nullptr, nullptr, nullptr);
-		if (png_ptr == nullptr)
+		png_structp pPng = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
+		if (pPng == nullptr)
 		{
 			fclose(fp);
-			printf("ERROR: png_create_read_struct error\n\n");
 			bResult = false;
+			UPrintf(USTR("ERROR: png_create_read_struct error\n\n"));
 			break;
 		}
-		png_infop info_ptr = png_create_info_struct(png_ptr);
-		if (info_ptr == nullptr)
+		png_infop pInfo = png_create_info_struct(pPng);
+		if (pInfo == nullptr)
 		{
-			png_destroy_read_struct(&png_ptr, (png_infopp)nullptr, (png_infopp)nullptr);
+			png_destroy_read_struct(&pPng, nullptr, nullptr);
 			fclose(fp);
-			printf("ERROR: png_create_info_struct error\n\n");
 			bResult = false;
+			UPrintf(USTR("ERROR: png_create_info_struct error\n\n"));
 			break;
 		}
-		png_infop end_info = png_create_info_struct(png_ptr);
-		if (end_info == nullptr)
+		png_infop pEndInfo = png_create_info_struct(pPng);
+		if (pEndInfo == nullptr)
 		{
-			png_destroy_read_struct(&png_ptr, &info_ptr, (png_infopp)nullptr);
+			png_destroy_read_struct(&pPng, &pInfo, nullptr);
 			fclose(fp);
-			printf("ERROR: png_create_info_struct error\n\n");
 			bResult = false;
+			UPrintf(USTR("ERROR: png_create_info_struct error\n\n"));
 			break;
 		}
-		if (setjmp(png_jmpbuf(png_ptr)) != 0)
+		if (setjmp(png_jmpbuf(pPng)) != 0)
 		{
-			png_destroy_read_struct(&png_ptr, &info_ptr, &end_info);
+			png_destroy_read_struct(&pPng, &pInfo, &pEndInfo);
 			fclose(fp);
-			printf("ERROR: setjmp error\n\n");
 			bResult = false;
+			UPrintf(USTR("ERROR: setjmp error\n\n"));
 			break;
 		}
-		png_init_io(png_ptr, fp);
-		png_read_info(png_ptr, info_ptr);
-		n32 nPngWidth = png_get_image_width(png_ptr, info_ptr);
-		n32 nPngHeight = png_get_image_height(png_ptr, info_ptr);
-		n32 nBitDepth = png_get_bit_depth(png_ptr, info_ptr);
+		png_init_io(pPng, fp);
+		png_read_info(pPng, pInfo);
+		n32 nPngWidth = png_get_image_width(pPng, pInfo);
+		n32 nPngHeight = png_get_image_height(pPng, pInfo);
+		n32 nBitDepth = png_get_bit_depth(pPng, pInfo);
 		if (nBitDepth != 8)
 		{
-			png_destroy_read_struct(&png_ptr, &info_ptr, (png_infopp)nullptr);
+			png_destroy_read_struct(&pPng, &pInfo, &pEndInfo);
 			fclose(fp);
-			printf("ERROR: nBitDepth != 8\n\n");
 			bResult = false;
+			UPrintf(USTR("ERROR: nBitDepth != 8\n\n"));
 			break;
 		}
-		n32 nColorType = png_get_color_type(png_ptr, info_ptr);
+		n32 nColorType = png_get_color_type(pPng, pInfo);
 		if (nColorType != PNG_COLOR_TYPE_RGB_ALPHA)
 		{
-			png_destroy_read_struct(&png_ptr, &info_ptr, (png_infopp)nullptr);
+			png_destroy_read_struct(&pPng, &pInfo, &pEndInfo);
 			fclose(fp);
-			printf("ERROR: nColorType != PNG_COLOR_TYPE_RGB_ALPHA\n\n");
 			bResult = false;
+			UPrintf(USTR("ERROR: nColorType != PNG_COLOR_TYPE_RGB_ALPHA\n\n"));
 			break;
 		}
 		n32 nWidth = getBoundSize(nPngWidth);
@@ -380,8 +377,8 @@ bool CBclim::CreateFile()
 		{
 			pRowPointers[i] = pData + i * nWidth * 4;
 		}
-		png_read_image(png_ptr, pRowPointers);
-		png_destroy_read_struct(&png_ptr, &info_ptr, &end_info);
+		png_read_image(pPng, pRowPointers);
+		png_destroy_read_struct(&pPng, &pInfo, &pEndInfo);
 		for (n32 i = 0; i < nPngHeight; i++)
 		{
 			for (n32 j = nPngWidth; j < nWidth; j++)
@@ -395,8 +392,8 @@ bool CBclim::CreateFile()
 		}
 		delete[] pRowPointers;
 		fclose(fp);
-		m_fpBclim = Fopen(m_pFileName, "wb");
-		if (m_fpBclim != nullptr)
+		fp = UFopen(m_sFileName.c_str(), USTR("wb"));
+		if (fp != nullptr)
 		{
 			SImageBlock imageBlock;
 			imageBlock.Signature = s_uSignatureImage;
@@ -415,11 +412,11 @@ bool CBclim::CreateFile()
 			bclimHeader.Reserved = 0;
 			u8* pBuffer = nullptr;
 			encode(pData, nWidth, nHeight, imageBlock.Format, 1, s_nBPP[imageBlock.Format], &pBuffer);
-			fwrite(pBuffer, 1, imageBlock.ImageSize, m_fpBclim);
+			fwrite(pBuffer, 1, imageBlock.ImageSize, fp);
+			delete[] pBuffer;
 			fwrite(&bclimHeader, sizeof(bclimHeader), 1, fp);
 			fwrite(&imageBlock, sizeof(imageBlock), 1, fp);
-			delete[] pBuffer;
-			fclose(m_fpBclim);
+			fclose(fp);
 		}
 		else
 		{
@@ -430,20 +427,20 @@ bool CBclim::CreateFile()
 	return bResult;
 }
 
-bool CBclim::IsBclimFile(const char* a_pFileName)
+bool CBclim::IsBclimFile(const UString& a_sFileName)
 {
-	FILE* fp = Fopen(a_pFileName, "rb");
+	FILE* fp = UFopen(a_sFileName.c_str(), USTR("rb"));
 	if (fp == nullptr)
 	{
 		return false;
 	}
-	Fseek(fp, 0, SEEK_END);
-	n64 nFileSize = Ftell(fp);
-	if (nFileSize < sizeof(SBclimHeader) + sizeof(SImageBlock))
+	fseek(fp, 0, SEEK_END);
+	u32 uFileSize = ftell(fp);
+	if (uFileSize < sizeof(SBclimHeader) + sizeof(SImageBlock))
 	{
 		return false;
 	}
-	Fseek(fp, nFileSize - (sizeof(SBclimHeader) + sizeof(SImageBlock)), SEEK_SET);
+	fseek(fp, uFileSize - (sizeof(SBclimHeader) + sizeof(SImageBlock)), SEEK_SET);
 	SBclimHeader bclimHeader;
 	fread(&bclimHeader, sizeof(bclimHeader), 1, fp);
 	fclose(fp);

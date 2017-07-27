@@ -25,29 +25,29 @@ public:
 	};
 	struct SOption
 	{
-		const char* Name;
+		const UChar* Name;
 		int Key;
-		const char* Doc;
+		const UChar* Doc;
 	};
 	CBclimTool();
 	~CBclimTool();
-	int ParseOptions(int a_nArgc, char* a_pArgv[]);
+	int ParseOptions(int a_nArgc, UChar* a_pArgv[]);
 	int CheckOptions();
 	int Help();
 	int Action();
 	static SOption s_Option[];
 private:
-	EParseOptionReturn parseOptions(const char* a_pName, int& a_nIndex, int a_nArgc, char* a_pArgv[]);
-	EParseOptionReturn parseOptions(int a_nKey, int& a_nIndex, int a_nArgc, char* a_pArgv[]);
+	EParseOptionReturn parseOptions(const UChar* a_pName, int& a_nIndex, int a_nArgc, UChar* a_pArgv[]);
+	EParseOptionReturn parseOptions(int a_nKey, int& a_nIndex, int a_nArgc, UChar* a_pArgv[]);
 	bool decodeFile();
 	bool encodeFile();
 	bool createFile();
 	EAction m_eAction;
-	const char* m_pFileName;
-	const char* m_pPngName;
+	UString m_sFileName;
+	UString m_sPngName;
 	CBclim::ETextureFormat m_eTextureFormat;
 	bool m_bVerbose;
-	const char* m_pMessage;
+	UString m_sMessage;
 };
 
 #endif	// BCLIMTOOL_H_

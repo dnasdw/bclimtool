@@ -53,14 +53,14 @@ public:
 	};
 	CBclim();
 	~CBclim();
-	void SetFileName(const char* a_pFileName);
-	void SetPngName(const char* a_pPngName);
+	void SetFileName(const UString& a_sFileName);
+	void SetPngName(const UString& a_sPngName);
 	void SetTextureFormat(ETextureFormat a_eTextureFormat);
 	void SetVerbose(bool a_bVerbose);
 	bool DecodeFile();
 	bool EncodeFile();
 	bool CreateFile();
-	static bool IsBclimFile(const char* a_pFileName);
+	static bool IsBclimFile(const UString& a_sFileName);
 	static const u32 s_uSignatureBclim;
 	static const u32 s_uSignatureImage;
 	static const int s_nBPP[];
@@ -69,11 +69,10 @@ private:
 	static n32 getBoundSize(n32 a_nSize);
 	static int decode(u8* a_pBuffer, n32 a_nWidth, n32 a_nHeight, n32 a_nFormat, pvrtexture::CPVRTexture** a_pPVRTexture);
 	static void encode(u8* a_pData, n32 a_nWidth, n32 a_nHeight, n32 a_nFormat, n32 a_nMipmapLevel, n32 a_nBPP, u8** a_pBuffer);
-	const char* m_pFileName;
-	const char* m_pPngName;
+	UString m_sFileName;
+	UString m_sPngName;
 	ETextureFormat m_eTextureFormat;
 	bool m_bVerbose;
-	FILE* m_fpBclim;
 };
 
 #endif	// BCLIM_H_

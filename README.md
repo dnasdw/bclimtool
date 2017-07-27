@@ -5,26 +5,37 @@ A tool for decoding/encoding bclim file.
 ## History
 
 - v1.0.0 @ 2015.03.11 - First release
+- v1.0.1 @ 2017.07.27 - Commandline support unicode
 
 ## Platforms
 
-- Linux *(Ubuntu 14.04, CentOS 7.0)*
-- Mac OS X *10.10*
-- Windows *XP+*
+- Windows
+- Linux
+- macOS
 
 ## Building
 
 ### Dependencies
 
 - cmake
+- zlib
+- libpng
 
 ### Compiling
 
+- make 64-bit version
 ~~~
 mkdir project
 cd project
-cmake ..
-cmake ..
+cmake -DUSE_DEP=OFF ..
+make
+~~~
+
+- make 32-bit version
+~~~
+mkdir project
+cd project
+cmake -DBUILD64=OFF -DUSE_DEP=OFF ..
 make
 ~~~
 
@@ -39,21 +50,15 @@ make install
 ### Windows
 
 ~~~
-bclimtool.exe [option...] [option]...
+bclimtool [option...] [option]...
 ~~~
 
 ### Other
 
 ~~~
-bclimtool [option...] [option]...
+bclimtool.sh [option...] [option]...
 ~~~
-
-> Remember to do `chmod +x bclimtool` first
 
 ## Options
 
 See `bclimtool --help` messages.
-
-## FAQ
-
-Nothing here for now.

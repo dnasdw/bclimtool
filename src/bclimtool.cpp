@@ -2,24 +2,21 @@
 
 CBclimTool::SOption CBclimTool::s_Option[] =
 {
-	{ "decode", 'd', "decode the bclim file" },
-	{ "encode", 'e', "encode the bclim file" },
-	{ "create", 'c', "create the bclim file" },
-	{ "file", 'f', "the bclim file" },
-	{ "png", 'p', "the png file for the bclim file" },
-	{ "format", 't', "[L8|A8|LA44|LA88|HL8|RGB565|RGB888|RGBA5551|RGBA4444|RGBA8888|ETC1|ETC1_A4|L4|A4]\n\t\tthe format for the bclim file, only for the create action, default is RGBA8888" },
-	{ "verbose", 'v', "show the info" },
-	{ "help", 'h', "show this help" },
+	{ USTR("decode"), USTR('d'), USTR("decode the target file") },
+	{ USTR("encode"), USTR('e'), USTR("encode the target file") },
+	{ USTR("create"), USTR('c'), USTR("create the target file") },
+	{ USTR("file"), USTR('f'), USTR("the target file") },
+	{ USTR("png"), USTR('p'), USTR("the png file for the target file") },
+	{ USTR("format"), USTR('t'), USTR("[L8|A8|LA44|LA88|HL8|RGB565|RGB888|RGBA5551|RGBA4444|RGBA8888|ETC1|ETC1_A4|L4|A4]\n\t\tthe format for the target file, only for the create action, default is RGBA8888") },
+	{ USTR("verbose"), USTR('v'), USTR("show the info") },
+	{ USTR("help"), USTR('h'), USTR("show this help") },
 	{ nullptr, 0, nullptr }
 };
 
 CBclimTool::CBclimTool()
 	: m_eAction(kActionNone)
-	, m_pFileName(nullptr)
-	, m_pPngName(nullptr)
 	, m_eTextureFormat(CBclim::kTextureFormatRGBA8888)
 	, m_bVerbose(false)
-	, m_pMessage(nullptr)
 {
 }
 
@@ -27,7 +24,7 @@ CBclimTool::~CBclimTool()
 {
 }
 
-int CBclimTool::ParseOptions(int a_nArgc, char* a_pArgv[])
+int CBclimTool::ParseOptions(int a_nArgc, UChar* a_pArgv[])
 {
 	if (a_nArgc <= 1)
 	{
@@ -35,18 +32,18 @@ int CBclimTool::ParseOptions(int a_nArgc, char* a_pArgv[])
 	}
 	for (int i = 1; i < a_nArgc; i++)
 	{
-		int nArgpc = static_cast<int>(strlen(a_pArgv[i]));
+		int nArgpc = static_cast<int>(UCslen(a_pArgv[i]));
 		if (nArgpc == 0)
 		{
 			continue;
 		}
 		int nIndex = i;
-		if (a_pArgv[i][0] != '-')
+		if (a_pArgv[i][0] != USTR('-'))
 		{
-			printf("ERROR: illegal option\n\n");
+			UPrintf(USTR("ERROR: illegal option\n\n"));
 			return 1;
 		}
-		else if (nArgpc > 1 && a_pArgv[i][1] != '-')
+		else if (nArgpc > 1 && a_pArgv[i][1] != USTR('-'))
 		{
 			for (int j = 1; j < nArgpc; j++)
 			{
@@ -55,37 +52,37 @@ int CBclimTool::ParseOptions(int a_nArgc, char* a_pArgv[])
 				case kParseOptionReturnSuccess:
 					break;
 				case kParseOptionReturnIllegalOption:
-					printf("ERROR: illegal option\n\n");
+					UPrintf(USTR("ERROR: illegal option\n\n"));
 					return 1;
 				case kParseOptionReturnNoArgument:
-					printf("ERROR: no argument\n\n");
+					UPrintf(USTR("ERROR: no argument\n\n"));
 					return 1;
 				case kParseOptionReturnUnknownArgument:
-					printf("ERROR: unknown argument \"%s\"\n\n", m_pMessage);
+					UPrintf(USTR("ERROR: unknown argument \"%") PRIUS USTR("\"\n\n"), m_sMessage.c_str());
 					return 1;
 				case kParseOptionReturnOptionConflict:
-					printf("ERROR: option conflict\n\n");
+					UPrintf(USTR("ERROR: option conflict\n\n"));
 					return 1;
 				}
 			}
 		}
-		else if (nArgpc > 2 && a_pArgv[i][1] == '-')
+		else if (nArgpc > 2 && a_pArgv[i][1] == USTR('-'))
 		{
 			switch (parseOptions(a_pArgv[i] + 2, nIndex, a_nArgc, a_pArgv))
 			{
 			case kParseOptionReturnSuccess:
 				break;
 			case kParseOptionReturnIllegalOption:
-				printf("ERROR: illegal option\n\n");
+				UPrintf(USTR("ERROR: illegal option\n\n"));
 				return 1;
 			case kParseOptionReturnNoArgument:
-				printf("ERROR: no argument\n\n");
+				UPrintf(USTR("ERROR: no argument\n\n"));
 				return 1;
 			case kParseOptionReturnUnknownArgument:
-				printf("ERROR: unknown argument \"%s\"\n\n", m_pMessage);
+				UPrintf(USTR("ERROR: unknown argument \"%") PRIUS USTR("\"\n\n"), m_sMessage.c_str());
 				return 1;
 			case kParseOptionReturnOptionConflict:
-				printf("ERROR: option conflict\n\n");
+				UPrintf(USTR("ERROR: option conflict\n\n"));
 				return 1;
 			}
 		}
@@ -98,27 +95,27 @@ int CBclimTool::CheckOptions()
 {
 	if (m_eAction == kActionNone)
 	{
-		printf("ERROR: nothing to do\n\n");
+		UPrintf(USTR("ERROR: nothing to do\n\n"));
 		return 1;
 	}
 	if (m_eAction != kActionHelp)
 	{
-		if (m_pFileName == nullptr)
+		if (m_sFileName.empty())
 		{
-			printf("ERROR: no --file option\n\n");
+			UPrintf(USTR("ERROR: no --file option\n\n"));
 			return 1;
 		}
-		if (m_pPngName == nullptr)
+		if (m_sPngName.empty())
 		{
-			printf("ERROR: no --png option\n\n");
+			UPrintf(USTR("ERROR: no --png option\n\n"));
 			return 1;
 		}
 	}
 	if (m_eAction == kActionDecode || m_eAction == kActionEncode)
 	{
-		if (!CBclim::IsBclimFile(m_pFileName))
+		if (!CBclim::IsBclimFile(m_sFileName))
 		{
-			printf("ERROR: %s is not a bclim file\n\n", m_pFileName);
+			UPrintf(USTR("ERROR: %") PRIUS USTR(" is not a bclim file\n\n"), m_sFileName.c_str());
 			return 1;
 		}
 	}
@@ -127,39 +124,39 @@ int CBclimTool::CheckOptions()
 
 int CBclimTool::Help()
 {
-	printf("bclimtool %s by dnasdw\n\n", BCLIMTOOL_VERSION);
-	printf("usage: bclimtool [option...] [option]...\n");
-	printf("sample:\n");
-	printf("  bclimtool -dvfp title.bclim title.png\n");
-	printf("  bclimtool -evfp title.bclim title_new.png\n");
-	printf("  bclimtool -cvtfp ETC1_A4 title_new.bclim title_new.png\n");
-	printf("\n");
-	printf("option:\n");
+	UPrintf(USTR("bclimtool %") PRIUS USTR(" by dnasdw\n\n"), AToU(BCLIMTOOL_VERSION).c_str());
+	UPrintf(USTR("usage: bclimtool [option...] [option]...\n"));
+	UPrintf(USTR("sample:\n"));
+	UPrintf(USTR("  bclimtool -dvfp title.bclim title.png\n"));
+	UPrintf(USTR("  bclimtool -evfp title.bclim title_new.png\n"));
+	UPrintf(USTR("  bclimtool -cvtfp ETC1_A4 title_new.bclim title_new.png\n"));
+	UPrintf(USTR("\n"));
+	UPrintf(USTR("option:\n"));
 	SOption* pOption = s_Option;
 	while (pOption->Name != nullptr || pOption->Doc != nullptr)
 	{
 		if (pOption->Name != nullptr)
 		{
-			printf("  ");
+			UPrintf(USTR("  "));
 			if (pOption->Key != 0)
 			{
-				printf("-%c,", pOption->Key);
+				UPrintf(USTR("-%c,"), pOption->Key);
 			}
 			else
 			{
-				printf("   ");
+				UPrintf(USTR("   "));
 			}
-			printf(" --%-8s", pOption->Name);
-			if (strlen(pOption->Name) >= 8 && pOption->Doc != nullptr)
+			UPrintf(USTR(" --%-8") PRIUS, pOption->Name);
+			if (UCslen(pOption->Name) >= 8 && pOption->Doc != nullptr)
 			{
-				printf("\n%16s", "");
+				UPrintf(USTR("\n%16") PRIUS, USTR(""));
 			}
 		}
 		if (pOption->Doc != nullptr)
 		{
-			printf("%s", pOption->Doc);
+			UPrintf(USTR("%") PRIUS, pOption->Doc);
 		}
-		printf("\n");
+		UPrintf(USTR("\n"));
 		pOption++;
 	}
 	return 0;
@@ -171,7 +168,7 @@ int CBclimTool::Action()
 	{
 		if (!decodeFile())
 		{
-			printf("ERROR: decode file failed\n\n");
+			UPrintf(USTR("ERROR: decode file failed\n\n"));
 			return 1;
 		}
 	}
@@ -179,7 +176,7 @@ int CBclimTool::Action()
 	{
 		if (!encodeFile())
 		{
-			printf("ERROR: encode file failed\n\n");
+			UPrintf(USTR("ERROR: encode file failed\n\n"));
 			return 1;
 		}
 	}
@@ -187,7 +184,7 @@ int CBclimTool::Action()
 	{
 		if (!createFile())
 		{
-			printf("ERROR: create file failed\n\n");
+			UPrintf(USTR("ERROR: create file failed\n\n"));
 			return 1;
 		}
 	}
@@ -198,9 +195,9 @@ int CBclimTool::Action()
 	return 0;
 }
 
-CBclimTool::EParseOptionReturn CBclimTool::parseOptions(const char* a_pName, int& a_nIndex, int a_nArgc, char* a_pArgv[])
+CBclimTool::EParseOptionReturn CBclimTool::parseOptions(const UChar* a_pName, int& a_nIndex, int a_nArgc, UChar* a_pArgv[])
 {
-	if (strcmp(a_pName, "decode") == 0)
+	if (UCscmp(a_pName, USTR("decode")) == 0)
 	{
 		if (m_eAction == kActionNone)
 		{
@@ -211,7 +208,7 @@ CBclimTool::EParseOptionReturn CBclimTool::parseOptions(const char* a_pName, int
 			return kParseOptionReturnOptionConflict;
 		}
 	}
-	else if (strcmp(a_pName, "encode") == 0)
+	else if (UCscmp(a_pName, USTR("encode")) == 0)
 	{
 		if (m_eAction == kActionNone)
 		{
@@ -222,7 +219,7 @@ CBclimTool::EParseOptionReturn CBclimTool::parseOptions(const char* a_pName, int
 			return kParseOptionReturnOptionConflict;
 		}
 	}
-	else if (strcmp(a_pName, "create") == 0)
+	else if (UCscmp(a_pName, USTR("create")) == 0)
 	{
 		if (m_eAction == kActionNone)
 		{
@@ -233,103 +230,103 @@ CBclimTool::EParseOptionReturn CBclimTool::parseOptions(const char* a_pName, int
 			return kParseOptionReturnOptionConflict;
 		}
 	}
-	else if (strcmp(a_pName, "file") == 0)
+	else if (UCscmp(a_pName, USTR("file")) == 0)
 	{
 		if (a_nIndex + 1 >= a_nArgc)
 		{
 			return kParseOptionReturnNoArgument;
 		}
-		m_pFileName = a_pArgv[++a_nIndex];
+		m_sFileName = a_pArgv[++a_nIndex];
 	}
-	else if (strcmp(a_pName, "png") == 0)
+	else if (UCscmp(a_pName, USTR("png")) == 0)
 	{
 		if (a_nIndex + 1 >= a_nArgc)
 		{
 			return kParseOptionReturnNoArgument;
 		}
-		m_pPngName = a_pArgv[++a_nIndex];
+		m_sPngName = a_pArgv[++a_nIndex];
 	}
-	else if (strcmp(a_pName, "format") == 0)
+	else if (UCscmp(a_pName, USTR("format")) == 0)
 	{
 		if (a_nIndex + 1 >= a_nArgc)
 		{
 			return kParseOptionReturnNoArgument;
 		}
-		char* pType = a_pArgv[++a_nIndex];
-		if (strcmp(pType, "L8") == 0)
+		UChar* pType = a_pArgv[++a_nIndex];
+		if (UCscmp(pType, USTR("L8")) == 0)
 		{
 			m_eTextureFormat = CBclim::kTextureFormatL8;
 		}
-		else if (strcmp(pType, "A8") == 0)
+		else if (UCscmp(pType, USTR("A8")) == 0)
 		{
 			m_eTextureFormat = CBclim::kTextureFormatA8;
 		}
-		else if (strcmp(pType, "LA44") == 0)
+		else if (UCscmp(pType, USTR("LA44")) == 0)
 		{
 			m_eTextureFormat = CBclim::kTextureFormatLA44;
 		}
-		else if (strcmp(pType, "LA88") == 0)
+		else if (UCscmp(pType, USTR("LA88")) == 0)
 		{
 			m_eTextureFormat = CBclim::kTextureFormatLA88;
 		}
-		else if (strcmp(pType, "HL8") == 0)
+		else if (UCscmp(pType, USTR("HL8")) == 0)
 		{
 			m_eTextureFormat = CBclim::kTextureFormatHL8;
 		}
-		else if (strcmp(pType, "RGB565") == 0)
+		else if (UCscmp(pType, USTR("RGB565")) == 0)
 		{
 			m_eTextureFormat = CBclim::kTextureFormatRGB565;
 		}
-		else if (strcmp(pType, "RGB888") == 0)
+		else if (UCscmp(pType, USTR("RGB888")) == 0)
 		{
 			m_eTextureFormat = CBclim::kTextureFormatRGB888;
 		}
-		else if (strcmp(pType, "RGBA5551") == 0)
+		else if (UCscmp(pType, USTR("RGBA5551")) == 0)
 		{
 			m_eTextureFormat = CBclim::kTextureFormatRGBA5551;
 		}
-		else if (strcmp(pType, "RGBA4444") == 0)
+		else if (UCscmp(pType, USTR("RGBA4444")) == 0)
 		{
 			m_eTextureFormat = CBclim::kTextureFormatRGBA4444;
 		}
-		else if (strcmp(pType, "RGBA8888") == 0)
+		else if (UCscmp(pType, USTR("RGBA8888")) == 0)
 		{
 			m_eTextureFormat = CBclim::kTextureFormatRGBA8888;
 		}
-		else if (strcmp(pType, "ETC1") == 0)
+		else if (UCscmp(pType, USTR("ETC1")) == 0)
 		{
 			m_eTextureFormat = CBclim::kTextureFormatETC1;
 		}
-		else if (strcmp(pType, "ETC1_A4") == 0)
+		else if (UCscmp(pType, USTR("ETC1_A4")) == 0)
 		{
 			m_eTextureFormat = CBclim::kTextureFormatETC1_A4;
 		}
-		else if (strcmp(pType, "L4") == 0)
+		else if (UCscmp(pType, USTR("L4")) == 0)
 		{
 			m_eTextureFormat = CBclim::kTextureFormatL4;
 		}
-		else if (strcmp(pType, "A4") == 0)
+		else if (UCscmp(pType, USTR("A4")) == 0)
 		{
 			m_eTextureFormat = CBclim::kTextureFormatA4;
 		}
 		else
 		{
-			m_pMessage = pType;
+			m_sMessage = pType;
 			return kParseOptionReturnUnknownArgument;
 		}
 	}
-	else if (strcmp(a_pName, "verbose") == 0)
+	else if (UCscmp(a_pName, USTR("verbose")) == 0)
 	{
 		m_bVerbose = true;
 	}
-	else if (strcmp(a_pName, "help") == 0)
+	else if (UCscmp(a_pName, USTR("help")) == 0)
 	{
 		m_eAction = kActionHelp;
 	}
 	return kParseOptionReturnSuccess;
 }
 
-CBclimTool::EParseOptionReturn CBclimTool::parseOptions(int a_nKey, int& a_nIndex, int m_nArgc, char* a_pArgv[])
+CBclimTool::EParseOptionReturn CBclimTool::parseOptions(int a_nKey, int& a_nIndex, int m_nArgc, UChar* a_pArgv[])
 {
 	for (SOption* pOption = s_Option; pOption->Name != nullptr || pOption->Key != 0 || pOption->Doc != nullptr; pOption++)
 	{
@@ -344,8 +341,8 @@ CBclimTool::EParseOptionReturn CBclimTool::parseOptions(int a_nKey, int& a_nInde
 bool CBclimTool::decodeFile()
 {
 	CBclim bclim;
-	bclim.SetFileName(m_pFileName);
-	bclim.SetPngName(m_pPngName);
+	bclim.SetFileName(m_sFileName);
+	bclim.SetPngName(m_sPngName);
 	bclim.SetVerbose(m_bVerbose);
 	return bclim.DecodeFile();
 }
@@ -353,8 +350,8 @@ bool CBclimTool::decodeFile()
 bool CBclimTool::encodeFile()
 {
 	CBclim bclim;
-	bclim.SetFileName(m_pFileName);
-	bclim.SetPngName(m_pPngName);
+	bclim.SetFileName(m_sFileName);
+	bclim.SetPngName(m_sPngName);
 	bclim.SetVerbose(m_bVerbose);
 	return bclim.EncodeFile();
 }
@@ -362,16 +359,15 @@ bool CBclimTool::encodeFile()
 bool CBclimTool::createFile()
 {
 	CBclim bclim;
-	bclim.SetFileName(m_pFileName);
-	bclim.SetPngName(m_pPngName);
+	bclim.SetFileName(m_sFileName);
+	bclim.SetPngName(m_sPngName);
 	bclim.SetTextureFormat(m_eTextureFormat);
 	bclim.SetVerbose(m_bVerbose);
 	return bclim.CreateFile();
 }
 
-int main(int argc, char* argv[])
+int UMain(int argc, UChar* argv[])
 {
-	SetLocale();
 	CBclimTool tool;
 	if (tool.ParseOptions(argc, argv) != 0)
 	{
