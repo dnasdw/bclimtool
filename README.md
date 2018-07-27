@@ -5,6 +5,7 @@ A tool for decoding/encoding bclim file.
 ## History
 
 - v1.1.0 @ 2018.01.04 - A new beginning
+- v1.1.1 @ 2018.07.27 - Update cmake
 
 ### v1.0
 
@@ -29,16 +30,16 @@ A tool for decoding/encoding bclim file.
 
 - make 64-bit version
 ~~~
-mkdir project
-cd project
+mkdir build
+cd build
 cmake -DUSE_DEP=OFF ..
 make
 ~~~
 
 - make 32-bit version
 ~~~
-mkdir project
-cd project
+mkdir build
+cd build
 cmake -DBUILD64=OFF -DUSE_DEP=OFF ..
 make
 ~~~
